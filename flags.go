@@ -49,6 +49,8 @@ func (f *flagGroup) init() error {
 	return nil
 }
 
+var IgnoreUnkownFlags = false
+
 func (f *flagGroup) parse(context *ParseContext) (*FlagClause, error) {
 	var token *Token
 
@@ -73,17 +75,24 @@ loop:
 					invert = true
 				}
 				flag, ok = f.long[name]
-				if !ok {
+				if !ok && !IgnoreUnkownFlags {
 					return nil, fmt.Errorf("unknown long flag '%s'", flagToken)
 				}
 			} else {
 				flag, ok = f.short[name]
-				if !ok {
+				if !ok && !IgnoreUnkownFlags {
 					return nil, fmt.Errorf("unknown short flag '%s'", flagToken)
 				}
 			}
 
 			context.Next()
+
+			if flag == nil && IgnoreUnkownFlags {
+				if !context.Peek().IsFlag() {
+					context.Next() // move past flag value
+				}
+				continue
+			}
 
 			fb, ok := flag.value.(boolFlag)
 			if ok && fb.IsBoolFlag() {
